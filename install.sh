@@ -1,0 +1,28 @@
+#!/bin/bash
+# Dressmaker 繁體中文化補丁（macOS / Apple Silicon）
+#   安裝：curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash
+#   還原：curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash -s restore
+set -euo pipefail
+REPO="${DRESSMAKER_ZHTW_REPO:-__REPO__}"
+BASE="${DRESSMAKER_ZHTW_BASE:-https://github.com/$REPO/releases/latest/download}"
+CMD="${1:-install}"
+case "$CMD" in install|restore) ;; *) echo "用法：bash install.sh [install|restore] [--game <資料夾>]"; exit 2;; esac
+
+if [ "$(uname -m)" != arm64 ]; then
+    echo "這個補丁只支援 Apple Silicon（M 系列晶片）的 Mac。" >&2
+    exit 1
+fi
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+echo "下載補丁工具…"
+curl -fsSL "$BASE/zhtw-patcher-arm64" -o "$TMP/zhtw-patcher"
+curl -fsSL "$BASE/SHA256SUMS.txt" -o "$TMP/SHA256SUMS.txt"
+expected="$(awk '$2=="zhtw-patcher-arm64"{print $1}' "$TMP/SHA256SUMS.txt")"
+actual="$(shasum -a 256 "$TMP/zhtw-patcher" | awk '{print $1}')"
+if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
+    echo "下載的檔案校驗失敗，請稍後再試。" >&2
+    exit 1
+fi
+chmod +x "$TMP/zhtw-patcher"
+"$TMP/zhtw-patcher" "$CMD" "${@:2}"
