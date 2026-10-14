@@ -25,10 +25,10 @@ CATALOG = 'StreamingAssets/aa/catalog.bin'
 DLL = 'Managed/Assembly-CSharp.dll'
 RES = 'resources.assets'
 
-# Steam build 25928714
+# Steam build 25936486
 MAC_ORIG = {
-    DLL: '03ebfcd7b03899a219ebb9d5106fb727edfc603a16be040f30013b9d70c59110',
-    RES: '6cb2a2ee9d7f4f3ddda9d3e91f537140671741244f7c79bdad26a66ff5fce936',
+    DLL: 'b6f0e991a3268613017d8f14e344932f2bb6758c9c6c3333faad56bd8527a8ca',
+    RES: '35927cb82a84d005c4c08156c36fad2e02e29e80c383b4f2757ad99bfbcea39a',
     CATALOG: 'ff4008a2a541712dbcc1ad653f7e9fad64826084d7b72517e5740178e73ecd43',
     STR_BUNDLE: '342963966b18e85524389474d51b2c57ad6c1fcdfac9834391a08d8f15982cfa',
     LOC_BUNDLE: '3a5ff4b32f86759049ab45262ec4bd8d3dc2ea6896efc8404850b618a7c5c525',
