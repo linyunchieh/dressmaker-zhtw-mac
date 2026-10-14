@@ -1,9 +1,9 @@
 #!/bin/bash
 # Dressmaker 繁體中文化補丁（macOS / Apple Silicon）
-#   安裝：curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash
-#   還原：curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash -s restore
+#   安裝：curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/download/install.sh | bash
+#   還原：curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/download/install.sh | bash -s restore
 set -euo pipefail
-REPO="${DRESSMAKER_ZHTW_REPO:-__REPO__}"
+REPO="${DRESSMAKER_ZHTW_REPO:-linyunchieh/dressmaker-zhtw-mac}"
 BASE="${DRESSMAKER_ZHTW_BASE:-https://github.com/$REPO/releases/latest/download}"
 CMD="${1:-install}"
 case "$CMD" in install|restore) ;; *) echo "用法：bash install.sh [install|restore] [--game <資料夾>]"; exit 2;; esac
