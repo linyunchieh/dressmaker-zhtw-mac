@@ -298,11 +298,15 @@ func install(game: URL, ui: UI) {
 
     ui.progress("檢查遊戲檔案版本…")
     var todo: [PatchFile] = []
+    var upgrade: Set<String> = []  // 舊版補丁裝過的檔案：改從備份的原檔重新套用
+    let hasMarker = fm.fileExists(atPath: marker.path)
     for p in smallPatches {
         switch sha256(data.appendingPathComponent(p.rel)) {
         case p.new?: continue
         case p.orig?: todo.append(p)
         case nil: ui.fail("找不到檔案：\(p.rel)")
+        case _ where hasMarker && sha256(backup.appendingPathComponent(p.rel)) == p.orig:
+            todo.append(p); upgrade.insert(p.rel)
         default: ui.fail("檔案版本不符：\(p.rel)\n\n遊戲可能已經更新，這個補丁只適用於製作時的版本。若裝過其他補丁，請先在 Steam「驗證遊戲檔案完整性」後再試。")
         }
     }
@@ -334,7 +338,7 @@ func install(game: URL, ui: UI) {
 
     do {
         ui.progress("備份原始檔案…")
-        for rel in todo.map(\.rel) + (resTodo ? [resRel] : []) {
+        for rel in todo.map(\.rel) + (resTodo ? [resRel] : []) where !upgrade.contains(rel) {
             let b = backup.appendingPathComponent(rel)
             let origSHA = rel == resRel ? resourcesOrigSHA : todo.first { $0.rel == rel }!.orig
             if sha256(b) == origSHA { continue }
@@ -351,7 +355,8 @@ func install(game: URL, ui: UI) {
             defer { try? fm.removeItem(at: pf) }
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/usr/bin/bspatch")
-            proc.arguments = [target.path, tmp.path, pf.path]
+            let source = upgrade.contains(p.rel) ? backup.appendingPathComponent(p.rel) : target
+            proc.arguments = [source.path, tmp.path, pf.path]
             try proc.run(); proc.waitUntilExit()
             guard proc.terminationStatus == 0, sha256(tmp) == p.new else {
                 try? fm.removeItem(at: tmp)

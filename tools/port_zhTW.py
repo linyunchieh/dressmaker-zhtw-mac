@@ -33,6 +33,8 @@ FONTS = {
     4055: (10649, (PINGFANG, 2)),   # SourceHanSansSC-Regular  -> PingFang TC Regular
     4054: (10650, (SONGTI, 7)),     # SourceHanSerifSC-Regular -> Songti TC Regular
 }
+# 在 Windows 版譯文之上再修正的用語（舊 → 新），套用到所有繁中字串
+TERM_FIXES = [('哥特', '哥德')]
 LOCALE_NAMES = {'Chinese (Simplified) (zh-Hans)': '繁體中文', 'Japanese (ja)': '日本語', 'English (en)': 'English'}
 
 
@@ -74,8 +76,11 @@ def port_string_tables():
             continue
         src = tc[d['m_Name']]
         for e in d['m_TableData']:
-            if e['m_Id'] in src and e['m_Localized'] != src[e['m_Id']]:
-                e['m_Localized'] = src[e['m_Id']]
+            new = src.get(e['m_Id'], e['m_Localized'])
+            for old, fixed in TERM_FIXES:
+                new = new.replace(old, fixed)
+            if new != e['m_Localized']:
+                e['m_Localized'] = new
                 n += 1
         o.save_typetree(d)
     open(out_path(STR_BUNDLE), 'wb').write(env.file.save(packer='original'))
