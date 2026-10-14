@@ -18,6 +18,9 @@ IMG_BUNDLE = AA + 'localization-assets-chinese(simplified)(zh-hans)_assets_all.b
 IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets', 'images')
 # 換成繁中的圖片（Texture2D 名稱 → assets/images/<名稱>.png），由 tools/images/ 的腳本產生
 IMAGES = ['flyer_scn', 'newspaperSprites_scn']
+# 直接沿用遊戲內其他圖片（原始壓縮資料照搬）：簡中 Logo「针影裁梦」→ 英文 Logo
+SHARED_BUNDLE = AA + 'localization-assets-shared_assets_all.bundle'
+IMAGE_COPIES = {'gamelogo_scn': (SHARED_BUNDLE, 'gamelogo')}
 CATALOG = 'StreamingAssets/aa/catalog.bin'
 DLL = 'Managed/Assembly-CSharp.dll'
 RES = 'resources.assets'
@@ -186,10 +189,26 @@ def port_images():
     from PIL import Image
     env = ttg.load(os.path.join(D, IMG_BUNDLE), D)
     done = []
+    copies = {}
+    for name, (bundle, src_name) in IMAGE_COPIES.items():
+        senv = ttg.load(os.path.join(D, bundle), D)
+        src = next(o.read() for o in senv.objects if o.type.name == 'Texture2D' and o.read().m_Name == src_name)
+        copies[name] = src
     for o in env.objects:
         if o.type.name != 'Texture2D':
             continue
         t = o.read()
+        if t.m_Name in copies:
+            src = copies[t.m_Name]
+            assert (src.m_Width, src.m_Height, src.m_TextureFormat, src.m_MipCount) == \
+                   (t.m_Width, t.m_Height, t.m_TextureFormat, t.m_MipCount), t.m_Name
+            raw = bytes(src.get_image_data())
+            t.image_data = raw
+            t.m_CompleteImageSize = len(raw)
+            t.m_StreamData.offset, t.m_StreamData.size, t.m_StreamData.path = 0, 0, ''
+            t.save()
+            done.append(t.m_Name)
+            continue
         if t.m_Name not in IMAGES:
             continue
         im = Image.open(os.path.join(IMG_DIR, t.m_Name + '.png')).convert('RGBA')
@@ -197,7 +216,7 @@ def port_images():
         t.set_image(im)          # 沿用原格式（DXT5），資料改成內嵌、不再指向 .resS
         t.save()
         done.append(t.m_Name)
-    assert sorted(done) == sorted(IMAGES), done
+    assert sorted(done) == sorted(IMAGES + list(IMAGE_COPIES)), done
     open(out_path(IMG_BUNDLE), 'wb').write(env.file.save(packer='original'))
     print('images done', done)
 
