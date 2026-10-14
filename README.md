@@ -28,14 +28,14 @@
 2. 貼上下面這行，按 Enter：
 
 ```bash
-curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/download/install.sh | bash
 ```
 
 看到「安裝完成！」就好了。這個方式不會跳出「無法驗證開發者」的警告。
 
 ### 方式二：下載 app 雙擊安裝
 
-1. 到 [Releases](https://github.com/__REPO__/releases/latest) 下載 `Dressmaker-zhTW-mac-app.zip`，解壓縮後會得到 `Dressmaker繁中補丁.app`。
+1. 到 [Releases](https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest) 下載 `Dressmaker-zhTW-mac-app.zip`，解壓縮後會得到 `Dressmaker繁中補丁.app`。
 2. 雙擊打開。因為這個 app 沒有經過 Apple 公證，第一次打開時 macOS 會擋下來，請依照你的系統版本操作：
    - **macOS 15 Sequoia 以上**：看到警告後按「完成」→ 打開「系統設定 → 隱私權與安全性」→ 捲到最下面，在「已阻擋 Dressmaker繁中補丁」旁按「**仍要打開**」→ 輸入登入密碼。
    - **macOS 14 以前**：在 app 上按右鍵（或 Control＋點按）→「打開」→ 再按一次「打開」。
@@ -58,7 +58,7 @@ curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bas
 - **終端機**：
 
   ```bash
-  curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash -s restore
+  curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/download/install.sh | bash -s restore
   ```
 
 - **app**：雙擊 → 按「還原原版」。
@@ -82,7 +82,7 @@ curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bas
 - 終端機版：在指令後面加上資料夾位置：
 
   ```bash
-  curl -fsSL https://github.com/__REPO__/releases/latest/download/install.sh | bash -s install --game "/你的/SteamLibrary/steamapps/common/Dressmaker"
+  curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/download/install.sh | bash -s install --game "/你的/SteamLibrary/steamapps/common/Dressmaker"
   ```
 
 **Q：顯示「找不到系統字型」？**
