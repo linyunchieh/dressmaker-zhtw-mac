@@ -10,6 +10,7 @@ SMALL = [
     'StreamingAssets/aa/catalog.bin',
     'StreamingAssets/aa/StandaloneOSX/localization-locales_assets_all.bundle',
     'StreamingAssets/aa/StandaloneOSX/localization-string-tables-chinese(simplified)(zh-hans)_assets_all.bundle',
+    'StreamingAssets/aa/StandaloneOSX/localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle',
 ]
 sha = lambda p: hashlib.sha256(open(p, 'rb').read()).hexdigest()
 q = lambda s: json.dumps(s, ensure_ascii=False)

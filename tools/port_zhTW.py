@@ -14,6 +14,10 @@ FONT_MODE = sys.argv[sys.argv.index('--font') + 1] if '--font' in sys.argv else 
 AA = 'StreamingAssets/aa/StandaloneOSX/'
 STR_BUNDLE = AA + 'localization-string-tables-chinese(simplified)(zh-hans)_assets_all.bundle'
 LOC_BUNDLE = AA + 'localization-locales_assets_all.bundle'
+IMG_BUNDLE = AA + 'localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle'
+IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets', 'images')
+# 換成繁中的圖片（Texture2D 名稱 → assets/images/<名稱>.png），由 tools/images/ 的腳本產生
+IMAGES = ['flyer_scn', 'newspaperSprites_scn']
 CATALOG = 'StreamingAssets/aa/catalog.bin'
 DLL = 'Managed/Assembly-CSharp.dll'
 RES = 'resources.assets'
@@ -24,6 +28,7 @@ MAC_ORIG = {
     CATALOG: '6c13657106952049563c4c7c92512273081ad9060fbdf9d6f5f83ea8f4b186ef',
     STR_BUNDLE: '9a0da53a08540e2522853b8cfdcaa0fec81445ec08a7bb45a2913132ccc0a2cd',
     LOC_BUNDLE: '3a5ff4b32f86759049ab45262ec4bd8d3dc2ea6896efc8404850b618a7c5c525',
+    IMG_BUNDLE: 'ed83d6fd63765387f473493b9dc854a202596a66390e096db55501e5c64e2c82',
 }
 
 PINGFANG = '/System/Library/AssetsV2/com_apple_MobileAsset_Font8/86ba2c91f017a3749571a82f2c6d890ac7ffb2fb.asset/AssetData/PingFang.ttc'
@@ -177,11 +182,31 @@ def port_dll():
     print('dll done')
 
 
+def port_images():
+    from PIL import Image
+    env = ttg.load(os.path.join(D, IMG_BUNDLE), D)
+    done = []
+    for o in env.objects:
+        if o.type.name != 'Texture2D':
+            continue
+        t = o.read()
+        if t.m_Name not in IMAGES:
+            continue
+        im = Image.open(os.path.join(IMG_DIR, t.m_Name + '.png')).convert('RGBA')
+        assert im.size == (t.m_Width, t.m_Height), t.m_Name
+        t.set_image(im)          # 沿用原格式（DXT5），資料改成內嵌、不再指向 .resS
+        t.save()
+        done.append(t.m_Name)
+    assert sorted(done) == sorted(IMAGES), done
+    open(out_path(IMG_BUNDLE), 'wb').write(env.file.save(packer='original'))
+    print('images done', done)
+
+
 def port_catalog():
     b = bytearray(open(os.path.join(D, CATALOG), 'rb').read())
     # record layout: ... crc u32, size u32, 0x726, 0x767 ; zero CRC of the two rewritten bundles
     tail = bytes.fromhex('2607000067070000')
-    for size in (os.path.getsize(os.path.join(D, LOC_BUNDLE)), os.path.getsize(os.path.join(D, STR_BUNDLE))):
+    for size in (os.path.getsize(os.path.join(D, b)) for b in (LOC_BUNDLE, STR_BUNDLE, IMG_BUNDLE)):
         pat = struct.pack('<I', size) + tail
         i = b.find(pat)
         assert i > 0 and b.find(pat, i + 1) < 0, f'catalog record for size {size}'
@@ -194,6 +219,7 @@ port_dll()
 port_catalog()
 port_locales()
 port_string_tables()
+port_images()
 port_resources()
 for rel in MAC_ORIG:
     print(sha(os.path.join(OUT, rel)), rel)
