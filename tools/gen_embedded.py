@@ -29,9 +29,9 @@ lines.append(f'let resourcesOrigSHA = "{sha(os.path.join(ORIG, "resources.assets
 
 t = json.load(open(TPL))
 
-# LocaleFontFallbacks：EBGaramond-Medium 的 zh-Hans 備援從明體(10650)改成黑體(10649)。
+# LocaleFontFallbacks：EBGaramond-Medium 的 zh-Hans 備援從明體改成黑體。
 # 原版遊戲的 TagBar 標籤（EBGaramond-Medium、autosize）配上明體備援時中文完全不顯示，改黑體就正常。
-LFF_PATH_ID, LFF_LATIN, SERIF, SANS = 12084, 10642, 10650, 10649
+LFF_PATH_ID, LFF_LATIN, SERIF, SANS = t['lff'], t['latin'], t['serif'], t['sans']
 res = open(os.path.join(ORIG, 'resources.assets'), 'rb').read()
 for i in range(t['entryCount']):
     o = t['tableOffset'] + 24 * i
@@ -51,7 +51,7 @@ lines.append(f'let resLayout = ResLayout(dataOffset: {t["dataOffset"]}, tableOff
 lines.append('let fontTemplates: [FontTemplate] = [')
 for f in t['fonts']:
     lines.append('    FontTemplate(' + ', '.join([
-        f'fontPathID: {f["fontPathID"]}', f'fontAssetPathID: {f["fontAssetPathID"]}',
+        f'fontPathID: {f["fontPathID"]}', f'fontAssetPathID: {f["fontAssetPathID"]}', f'systemFont: {q(f["systemFont"])}',
         f'fontHead: "{f["fontHead"]}"', f'lineSpacingOffset: {f["lineSpacingOffset"]}',
         f'defaultStyle: "{f["defaultStyle"]}"', f'fontRest: "{f["fontRest"]}"', f'fontSize: {f["fontSize"]}',
         f'assetPrefix: "{f["assetPrefix"]}"', f'assetSuffix: "{f["assetSuffix"]}"',

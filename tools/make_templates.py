@@ -5,13 +5,12 @@ usage: make_templates.py <orig Data dir> <out json>
 """
 import base64, json, os, struct, sys
 sys.path.insert(0, os.path.dirname(__file__))
-import ttg
+import ids, ttg
 from UnityPy.helpers import TypeTreeHelper
 from UnityPy.streams import EndianBinaryWriter
 
 D, OUT = sys.argv[1:3]
 RES = os.path.join(D, 'resources.assets')
-FONTS = {4055: 10649, 4054: 10650}  # Font pathID -> TMP_FontAsset pathID
 B64 = lambda b: base64.b64encode(b).decode()
 
 
@@ -29,16 +28,19 @@ for a, b in zip(objs, objs[1:]):
 assert objs[-1].byte_start + objs[-1].byte_size == os.path.getsize(RES)
 
 meta = open(RES, 'rb').read(DO)
-TABLE = 4512
+first = f.objects[min(f.objects)]
+TABLE = meta.find(struct.pack('<qQI', first.path_id, first.byte_start - DO, first.byte_size))  # 物件表位置每版不同
+assert TABLE > 0 and meta.find(struct.pack('<qQI', first.path_id, first.byte_start - DO, first.byte_size), TABLE + 1) < 0
 for k, pid in enumerate(sorted(f.objects)):
     o = f.objects[pid]
     assert struct.unpack('<qQI', meta[TABLE + 24 * k:TABLE + 24 * k + 20]) == (pid, o.byte_start - DO, o.byte_size)
 assert struct.unpack('>Q', meta[24:32])[0] == os.path.getsize(RES)
 
+found = ids.resource_ids(f)
 out = {'dataOffset': DO, 'tableOffset': TABLE, 'entryCount': len(f.objects), 'fileSizeOffset': 24,
-       'fonts': []}
+       'fonts': [], **{k: found[k] for k in ('sans', 'serif', 'lff', 'latin')}}
 
-for font_id, fa_id in FONTS.items():
+for font_id, (fa_id, ps) in found['fonts'].items():
     fo = f.objects[font_id]
     raw = fo.get_raw_data()
     fd = fo.read_typetree()
@@ -74,7 +76,7 @@ for font_id, fa_id in FONTS.items():
     assert abs(vals[0] - face['m_PointSize']) < 1e-4 and abs(vals[-1] - face['m_TabWidth']) < 1e-4
 
     out['fonts'].append({
-        'fontPathID': font_id, 'fontAssetPathID': fa_id,
+        'fontPathID': font_id, 'fontAssetPathID': fa_id, 'systemFont': ps,
         'fontHead': B64(head), 'lineSpacingOffset': ls_off,
         'defaultStyle': B64(raw[t + 8:t + 12]), 'fontRest': B64(rest), 'fontSize': fd['m_FontSize'],
         'assetPrefix': B64(pre), 'assetSuffix': B64(suf), 'faceNumbers': B64(nums),

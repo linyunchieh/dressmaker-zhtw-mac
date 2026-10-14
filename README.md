@@ -2,7 +2,7 @@
 
 把 Steam 遊戲 **Dressmaker** 的官方簡體中文換成**繁體中文（台灣用語）**，字型使用你 Mac 內建的**蘋方-繁**（黑體）與**宋體-繁**（明體），語言選單會顯示「繁體中文」。
 
-這是 Windows 版繁中補丁的 macOS 移植版，譯文完全相同，由同一位作者製作。
+這是 Windows 版繁中補丁的 macOS 移植版，由同一位作者製作；遊戲更新新增的字串也已補上繁中。
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|
 | 電腦 | Apple Silicon（M1／M2／M3／M4… 系列晶片）的 Mac |
 | 系統 | macOS 12 Monterey 以上 |
-| 遊戲 | Steam 版 Dressmaker（Mac），遊戲版本 0.7.0（Steam build 25508059） |
+| 遊戲 | Steam 版 Dressmaker（Mac），遊戲版本 0.7.0（Steam build 25928714，2026-10-14 更新） |
 
 > 遊戲更新後，補丁會偵測到檔案版本不同並**拒絕安裝**，不會弄壞遊戲。到時請等補丁更新。
 
@@ -102,7 +102,7 @@ curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/do
 
 | 檔案 | 內容 |
 |---|---|
-| `StreamingAssets/aa/StandaloneOSX/localization-string-tables-chinese(simplified)(zh-hans)_assets_all.bundle` | 4815 條簡中字串換成繁中 |
+| `StreamingAssets/aa/StandaloneOSX/localization-string-tables-chinese(simplified)(zh-hans)_assets_all.bundle` | 4841 條簡中字串換成繁中 |
 | `StreamingAssets/aa/StandaloneOSX/localization-locales_assets_all.bundle` | 語言名稱改成「繁體中文」「日本語」「English」 |
 | `StreamingAssets/aa/StandaloneOSX/localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle` | 傳單、報紙標題換成繁中，標題 Logo 換成英文版 |
 | `StreamingAssets/aa/catalog.bin` | 上面三個 bundle 的 CRC 檢查設為 0 |
@@ -119,6 +119,7 @@ curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/do
 
 ```bash
 # 1. 用 tools/port_zhTW.py 從新版原檔產生補丁後的檔案（需要 Windows 版補丁的 payload）
+#    先把 MAC_ORIG 換成新版原檔的 SHA-256；遊戲新增或改過的字串補進 TC_OVERRIDES（缺譯文時會列出來並停止）
 python tools/port_zhTW.py <原版 Data 資料夾> <payload 資料夾> <輸出資料夾>
 
 # 2. 重新產生內嵌資料並編譯、打包
@@ -144,6 +145,14 @@ xcrun notarytool submit dist/Dressmaker-zhTW-mac-app.zip --keychain-profile <設
 ```
 
 （公證通過後，再對解壓出來的 app 執行 `xcrun stapler staple`，然後重新壓縮。）
+
+---
+
+## 更新紀錄
+
+- **2.1.0**（2026-10-14）：支援遊戲 build 25928714。補上新版新增的 27 條字串（設定頁「遊戲玩法／畫面／音效」、減少動畫效果、光暈、鏡頭操作、設計簿翻頁等）與 4 條原文有改動的字串（「報酬」「作為成衣出售」、兩段教學）。從 2.0 升級直接重新執行安裝即可。
+- **2.0.0**（2026-10-14）：「哥特」改為「哥德」、傳單／報紙標題繁中化、標題 Logo 改英文版、修正衣服標籤條中文不顯示。
+- **1.0.0**（2026-10-14）：首次發布。
 
 ---
 

@@ -12,6 +12,8 @@ struct PatchFile { let rel: String; let orig: String; let new: String; let patch
 struct ResLayout { let dataOffset: Int; let tableOffset: Int; let entryCount: Int; let fileSizeOffset: Int }
 struct FontTemplate {
     let fontPathID: Int64; let fontAssetPathID: Int64
+    /// 換成的 Mac 內建系統字型（PostScript 名稱）
+    let systemFont: String
     let fontHead: String; let lineSpacingOffset: Int
     let defaultStyle: String; let fontRest: String; let fontSize: Double
     let assetPrefix: String; let assetSuffix: String; let faceNumbers: String
@@ -22,8 +24,6 @@ let resRel = "resources.assets"
 let backupDirName = "_zhTW_backup"
 let markerName = "installed.json"
 let markerVersion = 2  // 2：加上 LocaleFontFallbacks 修正
-/// 遊戲字型物件 → 對方 Mac 內建的系統字型（PostScript 名稱）
-let systemFonts: [Int64: String] = [4055: "PingFangTC-Regular", 4054: "STSongti-TC-Regular"]
 
 struct PatchError: Error { let message: String }
 
@@ -335,7 +335,7 @@ func install(game: URL, ui: UI) {
         ui.progress("讀取系統字型（蘋方-繁、宋體-繁）…")
         for t in fontTemplates {
             do {
-                let f = try loadSystemFont(systemFonts[t.fontPathID]!)
+                let f = try loadSystemFont(t.systemFont)
                 replace[t.fontPathID] = buildFontObject(t, f)
                 replace[t.fontAssetPathID] = buildFontAsset(t, f)
                 fontNames.append(f.family)

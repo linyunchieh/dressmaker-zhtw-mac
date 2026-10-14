@@ -3,9 +3,9 @@
 usage: port_zhTW.py <mac Data dir> <payload dir> <out dir> [--font mac|sourcehan]
 Reads original Mac files, writes patched copies under <out dir> with the same relative paths.
 """
-import hashlib, json, os, struct, sys, io
+import hashlib, json, os, re, struct, sys, io
 sys.path.insert(0, os.path.dirname(__file__))
-import ttg
+import ids, ttg
 from fontTools.ttLib import TTFont
 
 D, PAY, OUT = sys.argv[1:4]
@@ -25,24 +25,58 @@ CATALOG = 'StreamingAssets/aa/catalog.bin'
 DLL = 'Managed/Assembly-CSharp.dll'
 RES = 'resources.assets'
 
+# Steam build 25928714
 MAC_ORIG = {
-    DLL: '2e35816ac2ad8cf85b4b5b2761ce35e58e4265d2899d8b81f412305ac177d7c9',
-    RES: '9e81edc6776e96196b71e0f71504f1e75fb711da15f2dbd4ee57a559e052426d',
-    CATALOG: '6c13657106952049563c4c7c92512273081ad9060fbdf9d6f5f83ea8f4b186ef',
-    STR_BUNDLE: '9a0da53a08540e2522853b8cfdcaa0fec81445ec08a7bb45a2913132ccc0a2cd',
+    DLL: '03ebfcd7b03899a219ebb9d5106fb727edfc603a16be040f30013b9d70c59110',
+    RES: '6cb2a2ee9d7f4f3ddda9d3e91f537140671741244f7c79bdad26a66ff5fce936',
+    CATALOG: 'ff4008a2a541712dbcc1ad653f7e9fad64826084d7b72517e5740178e73ecd43',
+    STR_BUNDLE: '342963966b18e85524389474d51b2c57ad6c1fcdfac9834391a08d8f15982cfa',
     LOC_BUNDLE: '3a5ff4b32f86759049ab45262ec4bd8d3dc2ea6896efc8404850b618a7c5c525',
     IMG_BUNDLE: 'ed83d6fd63765387f473493b9dc854a202596a66390e096db55501e5c64e2c82',
 }
 
 PINGFANG = '/System/Library/AssetsV2/com_apple_MobileAsset_Font8/86ba2c91f017a3749571a82f2c6d890ac7ffb2fb.asset/AssetData/PingFang.ttc'
 SONGTI = '/System/Library/Fonts/Supplemental/Songti.ttc'
-# Font pathID -> (FontAsset pathID, source)
-FONTS = {
-    4055: (10649, (PINGFANG, 2)),   # SourceHanSansSC-Regular  -> PingFang TC Regular
-    4054: (10650, (SONGTI, 7)),     # SourceHanSerifSC-Regular -> Songti TC Regular
-}
+# 系統字型（PostScript 名稱）-> 開發機上的字型檔（ttc, index）
+FONT_FILES = {'PingFangTC-Regular': (PINGFANG, 2), 'STSongti-TC-Regular': (SONGTI, 7)}
 # 在 Windows 版譯文之上再修正的用語（舊 → 新），套用到所有繁中字串
 TERM_FIXES = [('哥特', '哥德')]
+# Windows 版譯文沒有（遊戲更新新增）或簡中原文已經改過的字串：(表名, id) -> 繁中
+TC_OVERRIDES = {
+    # build 25928714 新增
+    ('Content_zh-Hans', 40645156016209920): '鏡頭平移',
+    ('Content_zh-Hans', 41616726687600640): '衣身罩杯上片（左）',
+    ('Content_zh-Hans', 41616726729543680): '衣身罩杯上片（右）',
+    ('Content_zh-Hans', 41616726733737984): '衣身紐扣門襟·1',
+    ('Content_zh-Hans', 41616726733737985): '衣身紐扣門襟·2',
+    ('Content_zh-Hans', 41616726733737986): '衣身前紐扣門襟·1',
+    ('Content_zh-Hans', 42112863878234112): '鏡頭環繞',
+    ('Content_zh-Hans', 42112863882428416): '旋轉人台',
+    ('Content_zh-Hans', 42112873286057984): '裙襬前拼片（右）',
+    ('Content_zh-Hans', 43188215582920704): '下一頁',
+    ('Content_zh-Hans', 43188215608086528): '上一頁',
+    ('Tutorial_zh-Hans', 28632190920146944): '你也可以點擊<style=c1>部件名稱</style>鍵來看看可選的選項。',
+    ('Tutorial_zh-Hans', 28632190932729856): '你可以透過<style=c1>前後翻頁</style>來瀏覽設計簿。',
+    ('UI_zh-Hans', 28315391036997632): '丟棄布料',
+    ('UI_zh-Hans', 40957591591829504): '減少動畫效果',
+    ('UI_zh-Hans', 40960308741652480): '輪廓',
+    ('UI_zh-Hans', 40960419022487552): '快速鑲邊',
+    ('UI_zh-Hans', 41330588229251072): '遊戲玩法',
+    ('UI_zh-Hans', 41330658513203200): '畫面',
+    ('UI_zh-Hans', 41330715622846464): '音效',
+    ('UI_zh-Hans', 41337045322510336): '光暈',
+    ('UI_zh-Hans', 41383281541758976): '將從你的紀錄中永久刪除這件裙裝。確定嗎？',
+    ('UI_zh-Hans', 41740693060554752): '出售',
+    ('UI_zh-Hans', 42111338724442112): '剪刀',
+    ('UI_zh-Hans', 42111338724442113): '丟棄布料',
+    ('UI_zh-Hans', 42111338724442114): '切換縫份顯示',
+    ('UI_zh-Hans', 42111338724442115): '將所有裁片放回庫存',
+    # build 25928714 簡中原文改過
+    ('Tutorial_zh-Hans', 1016171696142): '現在為一件<color=#0e85d9>職業</color>的服裝尋找合適的<style=c1>設計</style>與<style=c1>布料</style>。',
+    ('Tutorial_zh-Hans', 1016171696158): '你可以透過按<color=#0e85d9>丟棄布料</color>鍵來丟棄已經使用的布料區域，為更多部件騰出空間。',
+    ('UI_zh-Hans', 1457183857295378): '報酬：<sprite=0>{0}',
+    ('UI_zh-Hans', 6234992911826944): '作為成衣出售',
+}
 LOCALE_NAMES = {'Chinese (Simplified) (zh-Hans)': '繁體中文', 'Japanese (ja)': '日本語', 'English (en)': 'English'}
 
 
@@ -76,6 +110,7 @@ def port_string_tables():
     tc = win_payload_tables()
     env = ttg.load(os.path.join(D, STR_BUNDLE), D)
     n = 0
+    missing = []
     for o in env.objects:
         if o.type.name != 'MonoBehaviour':
             continue
@@ -84,13 +119,18 @@ def port_string_tables():
             continue
         src = tc[d['m_Name']]
         for e in d['m_TableData']:
-            new = src.get(e['m_Id'], e['m_Localized'])
+            new = TC_OVERRIDES.get((d['m_Name'], e['m_Id'])) or src.get(e['m_Id'])
+            if new is None:
+                missing.append((d['m_Name'], e['m_Id'], e['m_Localized']))
+                continue
             for old, fixed in TERM_FIXES:
                 new = new.replace(old, fixed)
             if new != e['m_Localized']:
                 e['m_Localized'] = new
                 n += 1
         o.save_typetree(d)
+    if missing:  # 遊戲更新新增的字串：補進 TC_OVERRIDES
+        sys.exit('沒有繁中譯文：\n' + '\n'.join(map(repr, missing)))
     open(out_path(STR_BUNDLE), 'wb').write(env.file.save(packer='original'))
     print('string entries replaced', n)
 
@@ -145,7 +185,8 @@ def update_face(face, font):
 def port_resources():
     env = ttg.load(os.path.join(D, RES), D)
     f = list(env.files.values())[0]
-    for font_id, (fa_id, (path, idx)) in FONTS.items():
+    for font_id, (fa_id, ps) in ids.resource_ids(f)['fonts'].items():
+        path, idx = FONT_FILES[ps]
         fo = f.objects[font_id]
         fd = fo.read_typetree()
         if FONT_MODE == 'mac':
@@ -178,8 +219,11 @@ def port_resources():
 def port_dll():
     b = bytearray(open(os.path.join(D, DLL), 'rb').read())
     # LanguageSelectorPopup.NativeName: brtrue.s 7 -> pop; nop  (always return locale.LocaleName)
-    off = 162828
-    assert b[off - 16:off + 2] == bytes.fromhex('026f6904000a0b1201287004000a0a062d07'), 'IL mismatch'
+    # ldarg.0 callvirt stloc.1 ldloca.s 1 call stloc.0 ldloc.0 brtrue.s 7 ...（metadata token 每版不同）
+    il = re.compile(rb'\x02\x6f...\x0a\x0b\x12\x01\x28...\x0a\x0a\x06\x2d\x07\x02\x6f...\x0a\x2a\x06\x6f...\x0a\x2a', re.S)
+    hits = [m.start() for m in il.finditer(b)]
+    assert len(hits) == 1, f'IL mismatch {hits}'
+    off = hits[0] + 16
     b[off:off + 2] = b'\x26\x00'
     open(out_path(DLL), 'wb').write(b)
     print('dll done')
