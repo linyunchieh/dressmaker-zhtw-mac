@@ -21,6 +21,7 @@ let title = "Dressmaker 繁體中文化補丁"
 let resRel = "resources.assets"
 let backupDirName = "_zhTW_backup"
 let markerName = "installed.json"
+let markerVersion = 2  // 2：加上 LocaleFontFallbacks 修正
 /// 遊戲字型物件 → 對方 Mac 內建的系統字型（PostScript 名稱）
 let systemFonts: [Int64: String] = [4055: "PingFangTC-Regular", 4054: "STSongti-TC-Regular"]
 
@@ -312,11 +313,17 @@ func install(game: URL, ui: UI) {
     }
     let resURL = data.appendingPathComponent(resRel)
     let resSHA = sha256(resURL)
-    let installedSHA = (try? JSONSerialization.jsonObject(with: Data(contentsOf: marker))) .flatMap { ($0 as? [String: Any])?["resources"] as? String }
+    let installed = (try? JSONSerialization.jsonObject(with: Data(contentsOf: marker))) as? [String: Any]
+    let installedSHA = installed?["resources"] as? String
+    let installedVersion = installed?["version"] as? Int ?? 0
+    let resBackup = backup.appendingPathComponent(resRel)
     let resTodo: Bool
+    var resSource = resURL
     switch resSHA {
     case resourcesOrigSHA?: resTodo = true
-    case installedSHA where installedSHA != nil: resTodo = false
+    case installedSHA where installedSHA != nil && installedVersion >= markerVersion: resTodo = false
+    case installedSHA where installedSHA != nil && sha256(resBackup) == resourcesOrigSHA:
+        resTodo = true; resSource = resBackup  // 舊版補丁裝過：改從備份的原檔重建
     case nil: ui.fail("找不到檔案：\(resRel)")
     default: ui.fail("檔案版本不符：\(resRel)\n\n遊戲可能已經更新，或裝過其他補丁。請先在 Steam「驗證遊戲檔案完整性」後再試。")
     }
@@ -334,11 +341,12 @@ func install(game: URL, ui: UI) {
                 fontNames.append(f.family)
             } catch let e as PatchError { ui.fail(e.message) } catch { ui.fail("\(error)") }
         }
+        for (id, obj) in extraObjects { replace[id] = b64(obj) }
     }
 
     do {
         ui.progress("備份原始檔案…")
-        for rel in todo.map(\.rel) + (resTodo ? [resRel] : []) where !upgrade.contains(rel) {
+        for rel in todo.map(\.rel) + (resTodo && resSource == resURL ? [resRel] : []) where !upgrade.contains(rel) {
             let b = backup.appendingPathComponent(rel)
             let origSHA = rel == resRel ? resourcesOrigSHA : todo.first { $0.rel == rel }!.orig
             if sha256(b) == origSHA { continue }
@@ -368,14 +376,14 @@ func install(game: URL, ui: UI) {
             ui.progress("重建 resources.assets（換成 \(fontNames.joined(separator: "／"))）…")
             let tmp = resURL.appendingPathExtension("zhtw_tmp")
             try? fm.removeItem(at: tmp)
-            try rewriteResources(src: resURL, dst: tmp, replace: replace)
-            guard verifyResources(tmp, orig: resURL, replace: replace) else {
+            try rewriteResources(src: resSource, dst: tmp, replace: replace)
+            guard verifyResources(tmp, orig: resSource, replace: replace) else {
                 try? fm.removeItem(at: tmp)
                 throw PatchError(message: "resources.assets 驗證失敗，已中止。")
             }
             let newSHA = sha256(tmp)!
             try atomicReplace(resURL, with: tmp)
-            let m: [String: Any] = ["resources": newSHA, "fonts": fontNames, "version": 1]
+            let m: [String: Any] = ["resources": newSHA, "fonts": fontNames, "version": markerVersion]
             try JSONSerialization.data(withJSONObject: m, options: .prettyPrinted).write(to: marker)
         }
     } catch let e as PatchError {

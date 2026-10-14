@@ -107,7 +107,7 @@ curl -fsSL https://github.com/linyunchieh/dressmaker-zhtw-mac/releases/latest/do
 | `StreamingAssets/aa/StandaloneOSX/localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle` | 傳單、報紙標題換成繁中，標題 Logo 換成英文版 |
 | `StreamingAssets/aa/catalog.bin` | 上面三個 bundle 的 CRC 檢查設為 0 |
 | `Managed/Assembly-CSharp.dll` | 語言選單改用自訂名稱顯示（2 bytes） |
-| `resources.assets` | 中文字型換成蘋方-繁／宋體-繁，並更新對應的 TextMeshPro 字型設定 |
+| `resources.assets` | 中文字型換成蘋方-繁／宋體-繁，並更新對應的 TextMeshPro 字型設定；修正原版衣服標籤條在中文下不顯示標籤文字的問題 |
 
 每個檔案在寫入前都會比對 SHA-256，寫入後會再驗證一次，任何一步失敗都會中止，不會留下改到一半的檔案。
 

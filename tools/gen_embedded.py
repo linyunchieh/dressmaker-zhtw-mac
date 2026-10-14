@@ -2,7 +2,7 @@
 
 usage: gen_embedded.py <orig Data dir> <patched Data dir> <templates.json> <out.swift>
 """
-import base64, hashlib, json, os, subprocess, sys, tempfile
+import base64, hashlib, json, os, struct, subprocess, sys, tempfile
 
 ORIG, NEW, TPL, OUT = sys.argv[1:5]
 SMALL = [
@@ -28,6 +28,24 @@ lines.append(']')
 lines.append(f'let resourcesOrigSHA = "{sha(os.path.join(ORIG, "resources.assets"))}"')
 
 t = json.load(open(TPL))
+
+# LocaleFontFallbacks：EBGaramond-Medium 的 zh-Hans 備援從明體(10650)改成黑體(10649)。
+# 原版遊戲的 TagBar 標籤（EBGaramond-Medium、autosize）配上明體備援時中文完全不顯示，改黑體就正常。
+LFF_PATH_ID, LFF_LATIN, SERIF, SANS = 12084, 10642, 10650, 10649
+res = open(os.path.join(ORIG, 'resources.assets'), 'rb').read()
+for i in range(t['entryCount']):
+    o = t['tableOffset'] + 24 * i
+    pid, off, size = struct.unpack_from('<qQI', res, o)
+    if pid == LFF_PATH_ID:
+        lff = bytearray(res[t['dataOffset'] + off:t['dataOffset'] + off + size])
+        break
+else:
+    sys.exit('LocaleFontFallbacks not found')
+latin = lff.index(struct.pack('<iq', 0, LFF_LATIN))
+zh = lff.index(b'zh-Hans\0', latin) + 8 + 4
+assert struct.unpack_from('<q', lff, zh)[0] == SERIF, 'unexpected fallback layout'
+struct.pack_into('<q', lff, zh, SANS)
+lines.append(f'let extraObjects: [Int64: String] = [{LFF_PATH_ID}: "{base64.b64encode(bytes(lff)).decode()}"]')
 lines.append(f'let resLayout = ResLayout(dataOffset: {t["dataOffset"]}, tableOffset: {t["tableOffset"]}, '
              f'entryCount: {t["entryCount"]}, fileSizeOffset: {t["fileSizeOffset"]})')
 lines.append('let fontTemplates: [FontTemplate] = [')
