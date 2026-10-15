@@ -3,7 +3,7 @@ original macOS resources.assets, so the installer can rebuild them with system f
 
 usage: make_templates.py <orig Data dir> <out json>
 """
-import base64, json, os, struct, sys
+import base64, hashlib, json, os, struct, sys
 sys.path.insert(0, os.path.dirname(__file__))
 import ids, ttg
 from UnityPy.helpers import TypeTreeHelper
@@ -37,7 +37,11 @@ for k, pid in enumerate(sorted(f.objects)):
 assert struct.unpack('>Q', meta[24:32])[0] == os.path.getsize(RES)
 
 found = ids.resource_ids(f)
-out = {'dataOffset': DO, 'tableOffset': TABLE, 'entryCount': len(f.objects), 'fileSizeOffset': 24,
+SHA = lambda b: hashlib.sha256(b).hexdigest()
+lff = f.objects[found['lff']]
+# 安裝程式依名稱找物件、核對物件本身的 hash，所以不需要記 pathID 和偏移（遊戲 hotfix 不影響）
+out = {'dataOffset': DO, 'tableOffset': TABLE, 'entryCount': len(f.objects),
+       'lffName': ids.obj_name(lff), 'lffOrigSHA': SHA(lff.get_raw_data()),
        'fonts': [], **{k: found[k] for k in ('sans', 'serif', 'lff', 'latin')}}
 
 for font_id, (fa_id, ps) in found['fonts'].items():
@@ -77,6 +81,8 @@ for font_id, (fa_id, ps) in found['fonts'].items():
 
     out['fonts'].append({
         'fontPathID': font_id, 'fontAssetPathID': fa_id, 'systemFont': ps,
+        'fontName': fd['m_Name'], 'assetName': ids.obj_name(fa),
+        'fontOrigSHA': SHA(raw), 'assetOrigSHA': SHA(fa.get_raw_data()),
         'fontHead': B64(head), 'lineSpacingOffset': ls_off,
         'defaultStyle': B64(raw[t + 8:t + 12]), 'fontRest': B64(rest), 'fontSize': fd['m_FontSize'],
         'assetPrefix': B64(pre), 'assetSuffix': B64(suf), 'faceNumbers': B64(nums),

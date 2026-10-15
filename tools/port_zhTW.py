@@ -40,7 +40,7 @@ SONGTI = '/System/Library/Fonts/Supplemental/Songti.ttc'
 # 系統字型（PostScript 名稱）-> 開發機上的字型檔（ttc, index）
 FONT_FILES = {'PingFangTC-Regular': (PINGFANG, 2), 'STSongti-TC-Regular': (SONGTI, 7)}
 # 在 Windows 版譯文之上再修正的用語（舊 → 新），套用到所有繁中字串
-TERM_FIXES = [('哥特', '哥德')]
+TERM_FIXES = [('哥特', '哥德'), ('製衣', '裁縫')]
 # Windows 版譯文沒有（遊戲更新新增）或簡中原文已經改過的字串：(表名, id) -> 繁中
 TC_OVERRIDES = {
     # build 25928714 新增
