@@ -5,7 +5,7 @@ Reads original Mac files, writes patched copies under <out dir> with the same re
 """
 import hashlib, json, os, re, struct, sys, io
 sys.path.insert(0, os.path.dirname(__file__))
-import ids, ttg
+import ids, terms, ttg
 from fontTools.ttLib import TTFont
 
 D, PAY, OUT = sys.argv[1:4]
@@ -15,6 +15,7 @@ AA = 'StreamingAssets/aa/StandaloneOSX/'
 STR_BUNDLE = AA + 'localization-string-tables-chinese(simplified)(zh-hans)_assets_all.bundle'
 LOC_BUNDLE = AA + 'localization-locales_assets_all.bundle'
 IMG_BUNDLE = AA + 'localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle'
+EN_BUNDLE = AA + 'localization-string-tables-english(en)_assets_all.bundle'
 IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets', 'images')
 # 換成繁中的圖片（Texture2D 名稱 → assets/images/<名稱>.png），由 tools/images/ 的腳本產生
 IMAGES = ['flyer_scn', 'newspaperSprites_scn']
@@ -39,8 +40,6 @@ PINGFANG = '/System/Library/AssetsV2/com_apple_MobileAsset_Font8/86ba2c91f017a37
 SONGTI = '/System/Library/Fonts/Supplemental/Songti.ttc'
 # 系統字型（PostScript 名稱）-> 開發機上的字型檔（ttc, index）
 FONT_FILES = {'PingFangTC-Regular': (PINGFANG, 2), 'STSongti-TC-Regular': (SONGTI, 7)}
-# 在 Windows 版譯文之上再修正的用語（舊 → 新），套用到所有繁中字串
-TERM_FIXES = [('哥特', '哥德'), ('製衣', '裁縫')]
 # Windows 版譯文沒有（遊戲更新新增）或簡中原文已經改過的字串：(表名, id) -> 繁中
 TC_OVERRIDES = {
     # build 25928714 新增
@@ -106,8 +105,16 @@ def win_payload_tables():
             for o in env.objects if o.type.name == 'MonoBehaviour' and 'm_TableData' in o.read_typetree()}
 
 
+def en_tables():
+    env = ttg.load(os.path.join(D, EN_BUNDLE), D)
+    return {(d['m_Name'].replace('_en', '_zh-Hans'), e['m_Id']): e['m_Localized']
+            for d in (o.read_typetree() for o in env.objects if o.type.name == 'MonoBehaviour')
+            if 'm_TableData' in d for e in d['m_TableData']}
+
+
 def port_string_tables():
     tc = win_payload_tables()
+    en = en_tables()
     env = ttg.load(os.path.join(D, STR_BUNDLE), D)
     n = 0
     missing = []
@@ -123,8 +130,8 @@ def port_string_tables():
             if new is None:
                 missing.append((d['m_Name'], e['m_Id'], e['m_Localized']))
                 continue
-            for old, fixed in TERM_FIXES:
-                new = new.replace(old, fixed)
+            key = (d['m_Name'], e['m_Id'])
+            new = terms.fix(new, en.get(key, ''), key)  # 用語修正（tools/terms.py）
             if new != e['m_Localized']:
                 e['m_Localized'] = new
                 n += 1
