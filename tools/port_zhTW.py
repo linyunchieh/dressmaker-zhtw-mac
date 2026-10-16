@@ -17,7 +17,8 @@ LOC_BUNDLE = AA + 'localization-locales_assets_all.bundle'
 IMG_BUNDLE = AA + 'localization-assets-chinese(simplified)(zh-hans)_assets_all.bundle'
 EN_BUNDLE = AA + 'localization-string-tables-english(en)_assets_all.bundle'
 IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets', 'images')
-# 換成繁中的圖片（Texture2D 名稱 → assets/images/<名稱>.png），由 tools/images/ 的腳本產生
+# 換成繁中的圖片（Texture2D 名稱）：repo 只存改過的像素（assets/images/<名稱>_overlay.png、<名稱>_mask.png，
+# 由 tools/images/make_overlay.py 產生），build 時疊回原版貼圖
 IMAGES = ['flyer_scn', 'newspaperSprites_scn']
 # 直接沿用遊戲內其他圖片（原始壓縮資料照搬）：簡中 Logo「针影裁梦」→ 英文 Logo
 SHARED_BUNDLE = AA + 'localization-assets-shared_assets_all.bundle'
@@ -236,8 +237,18 @@ def port_dll():
     print('dll done')
 
 
-def port_images():
+def overlay_image(t):
+    import numpy as np
     from PIL import Image
+    im = np.array(t.image.convert('RGBA'))
+    overlay = np.array(Image.open(os.path.join(IMG_DIR, t.m_Name + '_overlay.png')).convert('RGBA'))
+    mask = np.array(Image.open(os.path.join(IMG_DIR, t.m_Name + '_mask.png')).convert('L')) > 0
+    assert im.shape == overlay.shape and im.shape[:2] == mask.shape, t.m_Name
+    im[mask] = overlay[mask]
+    return Image.fromarray(im)
+
+
+def port_images():
     env = ttg.load(os.path.join(D, IMG_BUNDLE), D)
     done = []
     copies = {}
@@ -262,8 +273,7 @@ def port_images():
             continue
         if t.m_Name not in IMAGES:
             continue
-        im = Image.open(os.path.join(IMG_DIR, t.m_Name + '.png')).convert('RGBA')
-        assert im.size == (t.m_Width, t.m_Height), t.m_Name
+        im = overlay_image(t)
         t.set_image(im)          # 沿用原格式（DXT5），資料改成內嵌、不再指向 .resS
         t.save()
         done.append(t.m_Name)
