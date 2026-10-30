@@ -159,6 +159,31 @@ struct SystemFont {
     let capTop: Double, xTop: Double
 }
 
+/// macOS 27 起蘋方只剩 Apple 自己的 hvgl 字形表，遊戲（FreeType）讀不懂會整片變方框，
+/// 這時改用一樣內建、仍是 glyf 格式的黑體-繁。
+let fontFallbacks: [String: [String]] = ["PingFangTC-Regular": ["STHeitiTC-Light"]]
+
+/// 範本指定的字型不能用時依序試備用字型，回傳第一個有一般字形表（glyf／CFF）的
+func loadUsableFont(_ psName: String) throws -> SystemFont {
+    var firstError: PatchError?
+    for name in [psName] + (fontFallbacks[psName] ?? []) {
+        do {
+            let f = try loadSystemFont(name)
+            if fontHasOutlines(f.data) { return f }
+            firstError = firstError ?? PatchError(message: "系統字型 \(name) 是遊戲讀不懂的新格式（hvgl）")
+        } catch let e as PatchError { firstError = firstError ?? e }
+    }
+    throw firstError!
+}
+
+/// 字型（或內嵌字型的物件）的表格目錄裡有沒有 glyf 或 CFF
+func fontHasOutlines(_ d: Data) -> Bool {
+    let head = d.prefix(64 * 1024)
+    let hasHvgl = head.range(of: Data("hvgl".utf8)) != nil
+    let hasOutline = head.range(of: Data("glyf".utf8)) != nil || head.range(of: Data("CFF ".utf8)) != nil
+    return hasOutline || !hasHvgl
+}
+
 func loadSystemFont(_ psName: String) throws -> SystemFont {
     let probe = CTFontCreateWithName(psName as CFString, 12, nil)
     guard (CTFontCopyPostScriptName(probe) as String) == psName else {
@@ -411,7 +436,11 @@ func resourcesState(_ url: URL) -> FileState {
     let f: AssetsFile
     do { f = try AssetsFile(url) } catch let e as PatchError { return .unknown(e.message) } catch { return .unknown("\(error)") }
     let t = resourceTargets(f)
-    if let lff = t.lff, f.bytes(lff) == b64(lffPatch.new) { return .patched }
+    if let lff = t.lff, f.bytes(lff) == b64(lffPatch.new) {
+        // 舊版補丁在 macOS 27 上嵌進了 hvgl 格式的蘋方，要從備份重建
+        if t.fonts.contains(where: { !fontHasOutlines(f.bytes($0.1)) }) { return .unknown("遊戲裡的中文字型是新版 macOS 的格式，遊戲讀不懂（文字會變方框）") }
+        return .patched
+    }
     if let p = t.problem { return .unknown(p) }
     if sha256(f.bytes(t.lff!)) != lffPatch.orig { return .unknown("\(lffPatch.name) 已經變更") }
     return .original
@@ -531,7 +560,7 @@ func atomicReplace(_ target: URL, with tmp: URL) throws {
 
 func loadFonts() throws -> [String: SystemFont] {
     var r: [String: SystemFont] = [:]
-    for t in fontTemplates where r[t.systemFont] == nil { r[t.systemFont] = try loadSystemFont(t.systemFont) }
+    for t in fontTemplates where r[t.systemFont] == nil { r[t.systemFont] = try loadUsableFont(t.systemFont) }
     return r
 }
 
@@ -550,7 +579,7 @@ func install(game: URL, ui: UI) {
     if todo.isEmpty { ui.info("已經是繁體中文化版本，不需要重複安裝。"); return }
 
     if todo.contains(where: { $0.0.rel == resRel }) {
-        ui.progress("讀取系統字型（蘋方-繁、宋體-繁）…")
+        ui.progress("讀取系統字型（黑體、宋體-繁）…")
         do { sysFonts = try loadFonts() } catch let e as PatchError { ui.fail(e.message) } catch { ui.fail("\(error)") }
     }
 
@@ -566,7 +595,7 @@ func install(game: URL, ui: UI) {
         }
         for (t, src, _) in todo {
             let name = (t.rel as NSString).lastPathComponent
-            ui.progress(t.rel == resRel ? "重建 resources.assets（換成蘋方-繁／宋體-繁）…" : "寫入 \(name)")
+            ui.progress(t.rel == resRel ? "重建 resources.assets（換成系統內建的繁中字型）…" : "寫入 \(name)")
             let target = L.data.appendingPathComponent(t.rel)
             let tmp = target.appendingPathExtension("zhtw_tmp")
             try? fm.removeItem(at: tmp)
@@ -634,7 +663,7 @@ func check(game: URL) -> Int32 {
         print("\(line)　\(t.rel)")
     }
     for t in fontTemplates {
-        do { _ = try loadSystemFont(t.systemFont); print("✓ 系統字型 \(t.systemFont)") }
+        do { let f = try loadUsableFont(t.systemFont); print("✓ 系統字型 \(f.family) \(f.style)") }
         catch let e as PatchError { print("✗ \(e.message)"); ok = false } catch { print("✗ \(error)"); ok = false }
     }
     print(ok ? "\n可以安裝。" : "\n" + mismatchHelp)
@@ -680,7 +709,7 @@ if let cmd = args.first, ["install", "restore", "check"].contains(cmd) {
     guard let g = game, validGame(g) else { ui.fail("這個資料夾裡沒有 Dressmaker.app。") }
     let a = NSAlert()
     a.messageText = title
-    a.informativeText = "將官方簡體中文換成繁體中文（台灣用語），字型使用這台 Mac 內建的蘋方-繁／宋體-繁。\n\n遊戲位置：\(g.path)"
+    a.informativeText = "將官方簡體中文換成繁體中文（台灣用語），字型使用這台 Mac 內建的蘋方-繁（新版 macOS 改用黑體-繁）／宋體-繁。\n\n遊戲位置：\(g.path)"
     a.addButton(withTitle: "安裝繁體中文")
     a.addButton(withTitle: "還原原版")
     a.addButton(withTitle: "取消")
