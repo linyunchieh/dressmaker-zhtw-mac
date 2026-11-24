@@ -25,7 +25,8 @@ LEGACY = {
                  '91c93abefba0869b6c69110ae6c7e479cded53abea8d8b8fdc756a1e4f6493f4',  # 2.3.1
                  'bb30b508c12f88074d84f7dbcd5529fd64feca9656985a1eac49f4753fdd350f',  # 2.3.3
                  'df52a8b6d72d0a285ad5c4294409479d1cf213564314e2b869b8814fbb2114be',  # 2.3.4
-                 'd9aeda55f2e53c3408a3690473b4f4a83bc6303432b7bafd498c0d2a90058458'],  # 2.3.5
+                 'd9aeda55f2e53c3408a3690473b4f4a83bc6303432b7bafd498c0d2a90058458',  # 2.3.5
+                 '30d8d5c86fb03e19c08b608f593cfd4966486b1bdc1729808fa8f56290dfe660'],  # 2.3.6
     BUNDLES[2]: ['e5df96cbb6f849e54b3f55fb8f075d174d71620283534a389967d68dff91e83c',
                  '085b3690b53c6aa6edc733664c30c9419d719b6a15b2aa612ebd7e9bf148deb3'],
 }
